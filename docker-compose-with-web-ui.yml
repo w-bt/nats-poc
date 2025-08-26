@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js", "-sd", "/data", "-m", "8222"]
+    ports:
+      - "4222:4222" # NATS client
+      - "8222:8222" # Monitoring
+    volumes:
+      - nats-data:/data
+
+  nats-box:
+    image: natsio/nats-box:latest
+    depends_on:
+      - nats
+    entrypoint: /bin/sh
+    stdin_open: true
+    tty: true
+
+  nats-ui:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./ui:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - nats
+
+volumes:
+  nats-data:
