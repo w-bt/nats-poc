@@ -3,23 +3,123 @@
 <head>
     <title>NATS JetStream Monitor</title>
     <style>
+        * { box-sizing: border-box; }
+        
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 0;
             background-color: #f5f5f5;
+            display: flex;
+            min-height: 100vh;
         }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: white;
+        
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 0;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
             padding: 20px;
+            background-color: #34495e;
+            border-bottom: 1px solid #3a5169;
+        }
+        
+        .sidebar-header h1 {
+            margin: 0;
+            font-size: 18px;
+            color: #ecf0f1;
+        }
+        
+        .sidebar-nav {
+            padding: 0;
+            list-style: none;
+            margin: 0;
+        }
+        
+        .sidebar-nav li {
+            border-bottom: 1px solid #3a5169;
+        }
+        
+        .sidebar-nav a {
+            display: block;
+            padding: 15px 20px;
+            color: #ecf0f1;
+            text-decoration: none;
+            transition: background-color 0.3s;
+            cursor: pointer;
+        }
+        
+        .sidebar-nav a:hover {
+            background-color: #34495e;
+        }
+        
+        .sidebar-nav a.active {
+            background-color: #3498db;
+            border-left: 4px solid #2980b9;
+        }
+        
+        .sidebar-nav .section-icon {
+            margin-right: 8px;
+            width: 16px;
+            display: inline-block;
+        }
+        
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            padding: 20px;
+        }
+        
+        .content-section {
+            display: none;
+            background-color: white;
+            padding: 30px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        h1 {
-            color: #333;
+        
+        .content-section.active {
+            display: block;
+        }
+        
+        .section-title {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
             text-align: center;
         }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0d6efd;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        
         .info-box {
             background-color: #f8f9fa;
             border: 1px solid #dee2e6;
@@ -27,31 +127,32 @@
             padding: 15px;
             margin-bottom: 20px;
         }
-        .info-box h2 {
+        
+        .info-box h2, .info-box h3 {
             margin-top: 0;
             color: #495057;
         }
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
         }
-        .stat-card {
-            background-color: #e9ecef;
-            padding: 15px;
-            border-radius: 4px;
-            text-align: center;
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
         }
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #0d6efd;
+        
+        th {
+            background-color: #f2f2f2;
         }
-        .stat-label {
-            font-size: 14px;
-            color: #6c757d;
+        
+        tr:hover {
+            background-color: #f5f5f5;
         }
+        
         .refresh-btn {
             background-color: #0d6efd;
             color: white;
@@ -60,79 +161,75 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 16px;
-            display: block;
-            margin: 20px auto;
+            margin: 10px 0;
         }
+        
         .refresh-btn:hover {
             background-color: #0b5ed7;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
+        
+        .disconnect-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
         }
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
+        
+        .disconnect-btn:hover {
+            background-color: #c82333;
         }
-        th {
-            background-color: #f2f2f2;
-        }
-        tr:hover {
-            background-color: #f5f5f5;
-        }
-        .status-ok {
-            color: #28a745;
-            font-weight: bold;
-        }
-        .status-warning {
-            color: #ffc107;
-            font-weight: bold;
-        }
-        .status-error {
-            color: #dc3545;
-            font-weight: bold;
-        }
-        pre {
-            background-color: #2d2d2d;
-            color: #f8f8f2;
-            padding: 15px;
-            border-radius: 4px;
-            overflow-x: auto;
-            max-height: 400px;
-        }
-        .message-list {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            padding: 10px;
-        }
-        .message-item {
-            padding: 8px;
-            border-bottom: 1px solid #eee;
-        }
-        .message-item:last-child {
-            border-bottom: none;
-        }
-        .message-header {
-            font-weight: bold;
-            color: #0d6efd;
-        }
-        .message-timestamp {
-            font-size: 0.8em;
-            color: #6c757d;
-        }
+        
         .auto-refresh {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 4px;
         }
-        .auto-refresh input {
-            margin-right: 5px;
+        
+        .loading {
+            color: #6c757d;
+            font-style: italic;
         }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-250px);
+                transition: transform 0.3s;
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+                width: 100%;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                z-index: 1000;
+                background: #3498db;
+                color: white;
+                border: none;
+                padding: 10px;
+                border-radius: 4px;
+            }
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+        }
+        
         .consumer-status-active {
             background-color: #d4edda;
             color: #155724;
@@ -154,191 +251,396 @@
             border-radius: 4px;
             font-weight: bold;
         }
-        .disconnect-btn {
-            background-color: #dc3545;
-            color: white;
-            border: none;
+
+        .message-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: white;
+        }
+
+        .message-item {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 5px;
+        }
+
+        .message-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .message-header {
+            font-weight: bold;
+            color: #0d6efd;
+            margin-bottom: 4px;
+        }
+
+        .message-timestamp {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-bottom: 4px;
+        }
+
+        .message-data {
+            color: #495057;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .message-headers {
+            font-size: 0.8em;
+            color: #6c757d;
+            background-color: #f8f9fa;
             padding: 4px 8px;
             border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
+            margin-top: 4px;
         }
-        .disconnect-btn:hover {
-            background-color: #c82333;
+
+        .filter-controls {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .filter-controls input {
+            padding: 4px 8px;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            margin-left: 5px;
+        }
+
+        .filter-controls button {
+            padding: 4px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            background-color: #e9ecef;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
+        .filter-controls button:hover {
+            background-color: #dee2e6;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>NATS JetStream Monitor</h1>
-        
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-value" id="server-version">-</div>
-                <div class="stat-label">Server Version</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="connections">-</div>
-                <div class="stat-label">Connections</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="subscriptions">-</div>
-                <div class="stat-label">Subscriptions</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value" id="messages">-</div>
-                <div class="stat-label">Messages</div>
-            </div>
+    <!-- Mobile menu button -->
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">Menu</button>
+    
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h1>NATS Monitor</h1>
         </div>
+        <ul class="sidebar-nav">
+            <li><a class="nav-link active" data-section="overview">Overview</a></li>
+            <li><a class="nav-link" data-section="performance">Performance</a></li>
+            <li><a class="nav-link" data-section="jetstream">JetStream</a></li>
+            <li><a class="nav-link" data-section="connections">Connections</a></li>
+            <li><a class="nav-link" data-section="subscriptions">Subscriptions</a></li>
+            <li><a class="nav-link" data-section="cluster">Cluster</a></li>
+            <li><a class="nav-link" data-section="processes">Processes</a></li>
+            <li><a class="nav-link" data-section="monitoring">Live Monitor</a></li>
+            <li><a class="nav-link" data-section="configuration">Config</a></li>
+        </ul>
+    </nav>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
         
+        <!-- Auto refresh controls (always visible) -->
         <div class="auto-refresh">
             <input type="checkbox" id="auto-refresh" checked>
             <label for="auto-refresh">Auto-refresh every 5 seconds</label>
-            <button class="refresh-btn" onclick="refreshData()">Refresh Data</button>
+            <button class="refresh-btn" onclick="refreshCurrentSection()">Refresh</button>
         </div>
         
-        <div class="info-box">
-            <h2>Server Information</h2>
-            <pre id="server-info">Loading...</pre>
+        <!-- Overview Section -->
+        <div class="content-section active" id="overview-section">
+            <h2 class="section-title">System Overview</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="server-version">-</div>
+                    <div class="stat-label">Server Version</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="connections">-</div>
+                    <div class="stat-label">Connections</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="subscriptions">-</div>
+                    <div class="stat-label">Subscriptions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="messages">-</div>
+                    <div class="stat-label">Messages</div>
+                </div>
+            </div>
+            <div class="info-box">
+                <h3>Quick Server Info</h3>
+                <div id="overview-details" class="loading">Loading overview...</div>
+            </div>
         </div>
         
-        <div class="info-box">
-            <h2>JetStream Information</h2>
-            <pre id="jetstream-info">Loading...</pre>
+        <!-- Performance Section -->
+        <div class="content-section" id="performance-section">
+            <h2 class="section-title">Performance Metrics</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="cpu-percent">-</div>
+                    <div class="stat-label">CPU Usage (%)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="memory-usage">-</div>
+                    <div class="stat-label">Memory Usage</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="uptime">-</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="cores">-</div>
+                    <div class="stat-label">CPU Cores</div>
+                </div>
+            </div>
+            <div class="info-box">
+                <h3>Network Metrics</h3>
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="in-msgs-rate">-</div>
+                        <div class="stat-label">Messages In/sec</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="out-msgs-rate">-</div>
+                        <div class="stat-label">Messages Out/sec</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="in-bytes-rate">-</div>
+                        <div class="stat-label">Bytes In/sec</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="out-bytes-rate">-</div>
+                        <div class="stat-label">Bytes Out/sec</div>
+                    </div>
+                </div>
+                <div id="performance-details" class="loading">Loading performance details...</div>
+            </div>
         </div>
         
-        <div class="info-box">
-            <h2>Connected Clients</h2>
-            <table id="clients-table">
-                <thead>
-                    <tr>
-                        <th>Client ID</th>
-                        <th>Name</th>
-                        <th>Language</th>
-                        <th>Version</th>
-                        <th>IP Address</th>
-                        <th>Subscriptions</th>
-                    </tr>
-                </thead>
-                <tbody id="clients-table-body">
-                    <tr>
-                        <td colspan="6">Loading...</td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- JetStream Section -->
+        <div class="content-section" id="jetstream-section">
+            <h2 class="section-title">JetStream</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="js-memory">-</div>
+                    <div class="stat-label">JS Memory</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="js-storage">-</div>
+                    <div class="stat-label">JS Storage</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="js-streams">-</div>
+                    <div class="stat-label">JS Streams</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="js-consumers">-</div>
+                    <div class="stat-label">JS Consumers</div>
+                </div>
+            </div>
+            <div class="info-box">
+                <h3>JetStream Details</h3>
+                <div id="jetstream-details" class="loading">Loading JetStream details...</div>
+            </div>
+            <div class="info-box">
+                <h3>Streams</h3>
+                <div id="streams-info" class="loading">Loading streams...</div>
+            </div>
+            <div class="info-box">
+                <h3>Consumers</h3>
+                <div id="consumers-info" class="loading">Loading consumers...</div>
+            </div>
+        </div>
+        
+        <!-- Connections Section -->
+        <div class="content-section" id="connections-section">
+            <h2 class="section-title">Client Connections</h2>
+            <div class="info-box">
+                <div id="connections-info" class="loading">Loading connections...</div>
+            </div>
+        </div>
+        
+        <!-- Subscriptions Section -->
+        <div class="content-section" id="subscriptions-section">
+            <h2 class="section-title">Subscriptions</h2>
+            <div class="info-box">
+                <div id="subscriptions-info" class="loading">Loading subscriptions...</div>
+            </div>
+        </div>
+        
+        <!-- Cluster Section -->
+        <div class="content-section" id="cluster-section">
+            <h2 class="section-title">Cluster & Routing</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="routes-count">-</div>
+                    <div class="stat-label">Routes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="gateways-count">-</div>
+                    <div class="stat-label">Gateways</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="leafnodes-count">-</div>
+                    <div class="stat-label">Leaf Nodes</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="remotes-count">-</div>
+                    <div class="stat-label">Remotes</div>
+                </div>
+            </div>
+            <div class="info-box">
+                <div id="cluster-details" class="loading">Loading cluster details...</div>
+            </div>
+        </div>
+        
+        <!-- Processes Section -->
+        <div class="content-section" id="processes-section">
+            <h2 class="section-title">Processes & Key-Value</h2>
+            <div class="info-box">
+                <h3>Consumer Processes</h3>
+                <div id="processes-info" class="loading">Loading processes...</div>
+            </div>
+            <div class="info-box">
+                <h3>KV Leases</h3>
+                <div id="kv-leases-info" class="loading">Loading KV leases...</div>
+            </div>
+        </div>
+        
+        <!-- Live Monitoring Section -->
+        <div class="content-section" id="monitoring-section">
+            <h2 class="section-title">Live Monitoring</h2>
+            <div class="info-box">
+                <h3>Consumer Status Updates</h3>
+                <div class="auto-refresh">
+                    <input type="checkbox" id="monitor-messages" onchange="toggleMessageMonitoring()">
+                    <label for="monitor-messages">Monitor consumer status</label>
+                </div>
+                <div id="message-monitor" style="display: none;">
+                    <p>Consumer status updates will appear here as they arrive.</p>
+                    <div class="message-list" id="message-list"></div>
+                </div>
+            </div>
             
-        </div>
-        
-        <div class="info-box">
-            <h2>Consumer Processes</h2>
-            <table id="processes-table">
-                <thead>
-                    <tr>
-                        <th>Process ID</th>
-                        <th>Name</th>
-                        <th>Command</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="processes-table-body">
-                    <tr>
-                        <td colspan="4">Loading...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="info-box">
-            <h2>Stream Information</h2>
-            <div id="stream-info">Loading...</div>
-        </div>
-        
-        <div class="info-box">
-            <h2>Consumers</h2>
-            <div id="consumers-info">Loading...</div>
-        </div>
-        
-        <div class="info-box">
-            <h2>KV Leases</h2>
-            <div id="kv-leases-info">Loading...</div>
-        </div>
-        
-        <div class="info-box">
-            <h2>Latest KV Lease Events (10 most recent)</h2>
-            <div id="kv-lease-details">Loading...</div>
-        </div>
-        
-        <div class="info-box">
-            <h2>Consumer Status Updates</h2>
-            <div class="auto-refresh">
-                <input type="checkbox" id="monitor-messages" onchange="toggleMessageMonitoring()">
-                <label for="monitor-messages">Monitor consumer status</label>
-            </div>
-            <div id="message-monitor" style="display: none;">
-                <p>Consumer status updates will appear here as they arrive.</p>
-                <div class="message-list" id="message-list"></div>
+            <div class="info-box">
+                <h3>Recent Stream Messages</h3>
+                <div class="auto-refresh">
+                    <input type="checkbox" id="monitor-stream-messages" onchange="toggleStreamMessageMonitoring()">
+                    <label for="monitor-stream-messages">Monitor stream messages</label>
+                </div>
+                <div class="filter-controls">
+                    <label for="message-filter">Filter messages:</label>
+                    <input type="text" id="message-filter" placeholder='e.g., {"phone":"phone-2"}, "partition-0", "worker-1"' onkeypress="if(event.key==='Enter') applyMessageFilter()">
+                    <button onclick="applyMessageFilter()">Apply Filter</button>
+                    <button onclick="clearMessageFilter()">Clear</button>
+                    <div id="filter-status" style="font-size: 0.8em; margin-top: 4px;"></div>
+                    <div style="font-size: 0.8em; color: #6c757d; margin-top: 4px;">
+                        Search in subject, headers, or message data. Use JSON format {"key":"value"} for exact matches or plain text for any match.
+                    </div>
+                </div>
+                <div id="stream-message-monitor" style="display: none;">
+                    <p>Actual stream messages will appear here as they arrive.</p>
+                    <div class="message-list" id="stream-message-list"></div>
+                </div>
             </div>
         </div>
         
-        <div class="info-box">
-            <h2>Recent Stream Messages</h2>
-            <div class="auto-refresh">
-                <input type="checkbox" id="monitor-stream-messages" onchange="toggleStreamMessageMonitoring()">
-                <label for="monitor-stream-messages">Monitor stream messages</label>
+        <!-- Configuration Section -->
+        <div class="content-section" id="configuration-section">
+            <h2 class="section-title">System Configuration</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="max-connections">-</div>
+                    <div class="stat-label">Max Connections</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="max-payload">-</div>
+                    <div class="stat-label">Max Payload</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="ping-interval">-</div>
+                    <div class="stat-label">Ping Interval</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="auth-timeout">-</div>
+                    <div class="stat-label">Auth Timeout</div>
+                </div>
             </div>
-            <div id="stream-message-monitor" style="display: none;">
-                <p>Actual stream messages will appear here as they arrive.</p>
-                <div class="message-list" id="stream-message-list"></div>
+            <div class="info-box">
+                <div id="system-config-details" class="loading">Loading configuration details...</div>
             </div>
         </div>
         
-        <div class="info-box">
-            <h2>Running the Applications</h2>
-            <p>To see the full monitoring capabilities in action:</p>
-            <ol>
-                <li><strong>Start a consumer:</strong> Run <code>make run-consumer</code> in a terminal</li>
-                <li><strong>Start a publisher:</strong> Run <code>make run-publisher</code> in another terminal</li>
-                <li><strong>Monitor the UI:</strong> Refresh this page to see updated statistics</li>
-            </ol>
-            <p>You can run multiple consumers to see the lease-based coordination in action.</p>
-        </div>
-        
-        <div class="info-box">
-            <h2>Subscriptions</h2>
-            <div id="subscriptions-info">Loading...</div>
-        </div>
-</body>
-</html>
-    </div>
-
+    </main>
+    
     <script>
         // Global variables
-        let messageMonitoringEnabled = false;
-        let streamMessageMonitoringEnabled = false;
-        let messageCount = 0;
-        const maxMessages = 50; // Limit to last 50 messages
+        let currentSection = 'overview';
+        let isAutoRefresh = true;
+        let refreshTimer = null;
         
-        // Function to fetch data from APIs
+        // Navigation functions
+        function showSection(sectionName) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Remove active class from all nav links
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // Show target section
+            const targetSection = document.getElementById(sectionName + '-section');
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+            
+            // Add active class to clicked nav link
+            const navLink = document.querySelector(`[data-section="${sectionName}"]`);
+            if (navLink) {
+                navLink.classList.add('active');
+            }
+            
+            currentSection = sectionName;
+            loadSectionData(sectionName);
+        }
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+        
+        // API functions
         async function fetchData(endpoint) {
             try {
-                // For process management APIs, use port 8082
-                let url = endpoint;
-                if (endpoint === '/api/processes' || endpoint.startsWith('/api/kill') || endpoint === '/api/kv-leases' || endpoint === '/api/delete-stream' || endpoint === '/api/stream-messages') {
-                    url = 'http://localhost:8082' + endpoint;
-                }
-                
-                const response = await fetch(url);
+                const response = await fetch(endpoint);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 return await response.json();
             } catch (error) {
                 console.error('Error fetching data:', error);
-                return { error: 'Failed to fetch data: ' + error.message };
+                return { error: error.message };
             }
         }
         
-        // Function to format bytes to human readable format
+        // Utility functions
         function formatBytes(bytes) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
@@ -347,74 +649,606 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
         
-        // Function to format date
+        function formatUptime(uptimeValue) {
+            if (!uptimeValue) return '-';
+            
+            // If it's already a formatted string, return it as is
+            if (typeof uptimeValue === 'string' && (uptimeValue.includes('h') || uptimeValue.includes('m') || uptimeValue.includes('s'))) {
+                return uptimeValue;
+            }
+            
+            // Otherwise, assume it's seconds and format it
+            const seconds = parseInt(uptimeValue, 10);
+            if (isNaN(seconds)) return '-';
+            
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            
+            if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+            if (hours > 0) return `${hours}h ${minutes}m`;
+            return `${minutes}m`;
+        }
+        
         function formatDate(dateString) {
             if (!dateString) return 'Never';
             const date = new Date(dateString);
             return date.toLocaleString();
         }
         
-        // Function to determine consumer status
-        function getConsumerStatus(consumer) {
-            const ackPending = consumer.num_ack_pending || 0;
-            const pending = consumer.num_pending || 0;
-            const delivered = consumer.delivered?.stream_seq || 0;
-            const ackFloor = consumer.ack_floor?.stream_seq || 0;
-            
-            // Check if consumer has been active recently (within last 30 seconds)
-            let isActive = false;
-            let timeSinceLastActivity = null;
-            if (consumer.ts) {
-                const lastActive = new Date(consumer.ts);
-                const now = new Date();
-                timeSinceLastActivity = Math.floor((now - lastActive) / 1000); // in seconds
-                isActive = timeSinceLastActivity < 30; // active if last activity was within 30 seconds
+        // Section loading functions
+        async function loadOverviewData() {
+            const varz = await fetchData('/api/v1/varz');
+            if (varz.error) {
+                document.getElementById('overview-details').innerHTML = `<p>Error: ${varz.error}</p>`;
+                return;
             }
             
-            if (ackPending > 10 || (delivered - ackFloor) > 10) {
-                return { status: 'Delayed', class: 'consumer-status-pending' };
-            } else if (pending > 0 || isActive) {
-                return { status: 'Active', class: 'consumer-status-active' };
-            } else if (timeSinceLastActivity !== null && timeSinceLastActivity < 300) { // Less than 5 minutes
-                return { status: 'Recently Active', class: 'consumer-status-active' };
-            } else {
-                return { status: 'Idle', class: 'consumer-status-inactive' };
-            }
+            // Update main stats
+            document.getElementById('server-version').textContent = varz.version || '-';
+            document.getElementById('connections').textContent = varz.connections || '-';
+            document.getElementById('subscriptions').textContent = varz.subscriptions || '-';
+            
+            const jsz = await fetchData('/api/v1/jsz');
+            document.getElementById('messages').textContent = jsz.messages || '-';
+            
+            // Update overview details
+            document.getElementById('overview-details').innerHTML = `
+                <table>
+                    <tr><td><strong>Server ID:</strong></td><td style="font-family: monospace;">${varz.server_id || 'N/A'}</td></tr>
+                    <tr><td><strong>Host:</strong></td><td>${varz.host || 'N/A'}:${varz.port || 'N/A'}</td></tr>
+                    <tr><td><strong>Uptime:</strong></td><td>${formatUptime(varz.uptime)}</td></tr>
+                    <tr><td><strong>CPU:</strong></td><td>${varz.cpu ? varz.cpu.toFixed(2) + '%' : 'N/A'}</td></tr>
+                    <tr><td><strong>Memory:</strong></td><td>${formatBytes(varz.mem || 0)}</td></tr>
+                </table>
+            `;
         }
         
-        // Function to add a message to the display
-        function addMessageToDisplay(subject, data, timestamp) {
-            const messageList = document.getElementById('message-list');
-            const messageItem = document.createElement('div');
-            messageItem.className = 'message-item';
-            messageItem.innerHTML = `
-                <div class="message-header">${subject}</div>
-                <div class="message-timestamp">${new Date(timestamp).toLocaleString()}</div>
-                <div class="message-data">${data}</div>
+        async function loadPerformanceData() {
+            const varz = await fetchData('/api/v1/varz');
+            if (varz.error) {
+                document.getElementById('performance-details').innerHTML = `<p>Error: ${varz.error}</p>`;
+                return;
+            }
+            
+            // Update performance stats
+            document.getElementById('cpu-percent').textContent = varz.cpu ? varz.cpu.toFixed(2) + '%' : '-';
+            document.getElementById('memory-usage').textContent = formatBytes(varz.mem || 0);
+            document.getElementById('uptime').textContent = formatUptime(varz.uptime);
+            document.getElementById('cores').textContent = varz.cores || '-';
+            
+            // Update network rates (simplified calculation)
+            const uptime = varz.uptime || 1;
+            const safeCalc = (value, divisor) => {
+                if (!value || !divisor || divisor === 0) return '-';
+                const result = Math.round(value / divisor);
+                return isNaN(result) ? '-' : result;
+            };
+            
+            const safeCalcBytes = (value, divisor) => {
+                if (!value || !divisor || divisor === 0) return '-';
+                const result = Math.round(value / divisor);
+                return isNaN(result) ? '-' : formatBytes(result);
+            };
+            
+            document.getElementById('in-msgs-rate').textContent = safeCalc(varz.in_msgs, uptime);
+            document.getElementById('out-msgs-rate').textContent = safeCalc(varz.out_msgs, uptime);
+            document.getElementById('in-bytes-rate').textContent = safeCalcBytes(varz.in_bytes, uptime);
+            document.getElementById('out-bytes-rate').textContent = safeCalcBytes(varz.out_bytes, uptime);
+            
+            document.getElementById('performance-details').innerHTML = `
+                <table>
+                    <thead>
+                        <tr><th>Metric</th><th>Total Count</th><th>Total Size</th><th>Rate/sec</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Messages In</td><td>${(varz.in_msgs || 0).toLocaleString()}</td><td>${formatBytes(varz.in_bytes || 0)}</td><td>${safeCalc(varz.in_msgs, uptime)}</td></tr>
+                        <tr><td>Messages Out</td><td>${(varz.out_msgs || 0).toLocaleString()}</td><td>${formatBytes(varz.out_bytes || 0)}</td><td>${safeCalc(varz.out_msgs, uptime)}</td></tr>
+                    </tbody>
+                </table>
+            `;
+        }
+        
+        async function loadJetStreamData() {
+            const jsz = await fetchData('/api/v1/jsz');
+            if (jsz.error) {
+                document.getElementById('jetstream-details').innerHTML = `<p>Error: ${jsz.error}</p>`;
+                return;
+            }
+            
+            // Update JetStream stats
+            document.getElementById('js-memory').textContent = formatBytes(jsz.memory || 0);
+            document.getElementById('js-storage').textContent = formatBytes(jsz.storage || 0);
+            document.getElementById('js-streams').textContent = jsz.streams || '-';
+            document.getElementById('js-consumers').textContent = jsz.consumers || '-';
+            
+            // JetStream details table
+            document.getElementById('jetstream-details').innerHTML = `
+                <table>
+                    <thead>
+                        <tr><th>Resource</th><th>Current</th><th>Limit</th><th>Usage %</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Memory</td>
+                            <td>${formatBytes(jsz.memory || 0)}</td>
+                            <td>${jsz.config?.max_memory ? formatBytes(jsz.config.max_memory) : 'Unlimited'}</td>
+                            <td>${jsz.config?.max_memory ? ((jsz.memory / jsz.config.max_memory) * 100).toFixed(1) + '%' : 'N/A'}</td>
+                        </tr>
+                        <tr>
+                            <td>Storage</td>
+                            <td>${formatBytes(jsz.storage || 0)}</td>
+                            <td>${jsz.config?.max_storage ? formatBytes(jsz.config.max_storage) : 'Unlimited'}</td>
+                            <td>${jsz.config?.max_storage ? ((jsz.storage / jsz.config.max_storage) * 100).toFixed(1) + '%' : 'N/A'}</td>
+                        </tr>
+                    </tbody>
+                </table>
             `;
             
-            // Add to top of list
-            if (messageList.firstChild) {
-                messageList.insertBefore(messageItem, messageList.firstChild);
+            // Load streams and consumers details
+            const jszDetail = await fetchData('/api/v1/jsz?streams=true&consumers=true');
+            if (!jszDetail.error && jszDetail.account_details?.[0]?.stream_detail) {
+                const streams = jszDetail.account_details[0].stream_detail;
+                
+                let streamsHtml = `
+                    <table>
+                        <thead>
+                            <tr><th>Stream</th><th>Messages</th><th>Size</th><th>Consumers</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                streams.forEach(stream => {
+                    streamsHtml += `
+                        <tr>
+                            <td>${stream.name}</td>
+                            <td>${stream.state?.messages || 0}</td>
+                            <td>${formatBytes(stream.state?.bytes || 0)}</td>
+                            <td>${stream.state?.consumer_count || 0}</td>
+                            <td><button class="disconnect-btn" onclick="deleteStream('${stream.name}')">Delete</button></td>
+                        </tr>
+                    `;
+                });
+                
+                streamsHtml += '</tbody></table>';
+                document.getElementById('streams-info').innerHTML = streamsHtml;
+                
+                // Consumers info
+                let consumersHtml = `
+                    <table>
+                        <thead>
+                            <tr><th>Consumer</th><th>Stream</th><th>Delivered</th><th>Pending</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                let hasConsumers = false;
+                streams.forEach(stream => {
+                    if (stream.consumer_detail?.length > 0) {
+                        stream.consumer_detail.forEach(consumer => {
+                            hasConsumers = true;
+                            consumersHtml += `
+                                <tr>
+                                    <td>${consumer.name}</td>
+                                    <td>${stream.name}</td>
+                                    <td>${consumer.delivered?.stream_seq || 0}</td>
+                                    <td>${consumer.num_pending || 0}</td>
+                                    <td><span class="consumer-status-active">Active</span></td>
+                                </tr>
+                            `;
+                        });
+                    }
+                });
+                
+                if (!hasConsumers) {
+                    consumersHtml += '<tr><td colspan="5">No consumers found</td></tr>';
+                }
+                
+                consumersHtml += '</tbody></table>';
+                document.getElementById('consumers-info').innerHTML = consumersHtml;
             } else {
-                messageList.appendChild(messageItem);
-            }
-            
-            // Limit to maxMessages
-            while (messageList.children.length > maxMessages) {
-                messageList.removeChild(messageList.lastChild);
+                document.getElementById('streams-info').innerHTML = '<p>No streams found</p>';
+                document.getElementById('consumers-info').innerHTML = '<p>No consumers found</p>';
             }
         }
         
-        // Function to connect to NATS WebSocket for real-time message monitoring
-        let wsConnection = null;
+        async function loadConnectionsData() {
+            const connz = await fetchData('/api/v1/connz');
+            if (connz.error) {
+                document.getElementById('connections-info').innerHTML = `<p>Error: ${connz.error}</p>`;
+                return;
+            }
+            
+            if (!connz.connections?.length) {
+                document.getElementById('connections-info').innerHTML = '<p>No active connections</p>';
+                return;
+            }
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr><th>Client ID</th><th>Name</th><th>Lang</th><th>Version</th><th>IP</th><th>Subscriptions</th></tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            connz.connections.forEach(conn => {
+                html += `
+                    <tr>
+                        <td>${conn.cid || '-'}</td>
+                        <td>${conn.name || '-'}</td>
+                        <td>${conn.lang || '-'}</td>
+                        <td>${conn.version || '-'}</td>
+                        <td>${conn.ip || '-'}</td>
+                        <td>${conn.subscriptions || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('connections-info').innerHTML = html;
+        }
+        
+        async function loadSubscriptionsData() {
+            const connz = await fetchData('/api/v1/connz?subs=1');
+            if (connz.error) {
+                document.getElementById('subscriptions-info').innerHTML = `<p>Error: ${connz.error}</p>`;
+                return;
+            }
+            
+            if (!connz.connections?.length) {
+                document.getElementById('subscriptions-info').innerHTML = '<p>No connections with subscriptions</p>';
+                return;
+            }
+            
+            let totalSubs = 0;
+            let inboxSubs = 0;
+            let jetStreamSubs = 0;
+            let kvSubs = 0;
+            let otherSubs = 0;
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr><th>Subject</th><th>Type</th><th>Client</th><th>Messages</th></tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            connz.connections.forEach(conn => {
+                if (conn.subscriptions_list?.length > 0) {
+                    conn.subscriptions_list.forEach(sub => {
+                        totalSubs++;
+                        const subjectStr = typeof sub === 'string' ? sub : sub.subject;
+                        let subType = 'Other';
+                        
+                        if (subjectStr.startsWith('_INBOX.')) {
+                            subType = 'Inbox';
+                            inboxSubs++;
+                        } else if (subjectStr.startsWith('$JS.')) {
+                            subType = 'JetStream';
+                            jetStreamSubs++;
+                        } else if (subjectStr.startsWith('$KV.')) {
+                            subType = 'Key-Value';
+                            kvSubs++;
+                        } else {
+                            otherSubs++;
+                        }
+                        
+                        let displaySubject = subjectStr;
+                        if (subjectStr.startsWith('_INBOX.') && subjectStr.length > 40) {
+                            displaySubject = subjectStr.substring(0, 20) + '...' + subjectStr.substring(subjectStr.length - 10);
+                        }
+                        
+                        html += `
+                            <tr>
+                                <td title="${subjectStr}" style="font-family: monospace; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${displaySubject}</td>
+                                <td><span style="background: #e9ecef; padding: 2px 6px; border-radius: 3px; font-size: 11px;">${subType}</span></td>
+                                <td>${conn.name || conn.cid}</td>
+                                <td>${conn.in_msgs || 0}/${conn.out_msgs || 0}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            });
+            
+            html += '</tbody></table>';
+            
+            const summary = `
+                <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
+                    <strong>Subscription Summary (${totalSubs} total):</strong>
+                    ${inboxSubs > 0 ? `<span style="margin-left: 10px;">Inbox: ${inboxSubs}</span>` : ''}
+                    ${jetStreamSubs > 0 ? `<span style="margin-left: 10px;">JetStream: ${jetStreamSubs}</span>` : ''}
+                    ${kvSubs > 0 ? `<span style="margin-left: 10px;">KV: ${kvSubs}</span>` : ''}
+                    ${otherSubs > 0 ? `<span style="margin-left: 10px;">Other: ${otherSubs}</span>` : ''}
+                </div>
+            `;
+            
+            document.getElementById('subscriptions-info').innerHTML = summary + html;
+        }
+        
+        async function loadClusterData() {
+            const varz = await fetchData('/api/v1/varz');
+            if (varz.error) {
+                document.getElementById('cluster-details').innerHTML = `<p>Error: ${varz.error}</p>`;
+                return;
+            }
+            
+            // Update cluster stats
+            document.getElementById('routes-count').textContent = varz.routes || 0;
+            document.getElementById('gateways-count').textContent = (varz.gateway?.inbound || 0) + (varz.gateway?.outbound || 0);
+            document.getElementById('leafnodes-count').textContent = varz.leafnodes || 0;
+            document.getElementById('remotes-count').textContent = varz.remotes || 0;
+            
+            const routez = await fetchData('/api/v1/routez');
+            let clusterHtml = '<h3>Cluster Status: ';
+            if (!routez.error && routez.num_routes > 0) {
+                clusterHtml += '<span style="color: #28a745;">[OK] Connected</span>';
+            } else if (!routez.error && routez.num_routes === 0) {
+                clusterHtml += '<span style="color: #ffc107;">[WARN] Standalone (No Routes)</span>';
+            } else {
+                clusterHtml += '<span style="color: #dc3545;">[ERROR] Error</span>';
+            }
+            clusterHtml += '</h3>';
+            
+            if (!routez.error && routez.routes?.length > 0) {
+                clusterHtml += `
+                    <table>
+                        <thead>
+                            <tr><th>Route ID</th><th>Remote ID</th><th>Address</th><th>In/Out Msgs</th></tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                routez.routes.forEach(route => {
+                    clusterHtml += `
+                        <tr>
+                            <td style="font-family: monospace;">${route.rid || 'N/A'}</td>
+                            <td style="font-family: monospace;">${route.remote_id || 'N/A'}</td>
+                            <td>${route.ip || 'N/A'}:${route.port || 'N/A'}</td>
+                            <td>${route.in_msgs || 0}/${route.out_msgs || 0}</td>
+                        </tr>
+                    `;
+                });
+                
+                clusterHtml += '</tbody></table>';
+            } else {
+                clusterHtml += '<p>No routes configured (standalone server)</p>';
+            }
+            
+            document.getElementById('cluster-details').innerHTML = clusterHtml;
+        }
+        
+        async function loadProcessesData() {
+            // Load consumer processes
+            const processes = await fetchData('/api/processes');
+            if (processes.error) {
+                document.getElementById('processes-info').innerHTML = `<p>Error: ${processes.error}</p>`;
+            } else if (processes.length === 0) {
+                document.getElementById('processes-info').innerHTML = '<p>No consumer processes running</p>';
+            } else {
+                let html = `
+                    <table>
+                        <thead>
+                            <tr><th>PID</th><th>Name</th><th>Command</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                processes.forEach(proc => {
+                    html += `
+                        <tr>
+                            <td>${proc.pid}</td>
+                            <td>${proc.name}</td>
+                            <td style="font-family: monospace; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${proc.command || 'N/A'}</td>
+                            <td><button class="disconnect-btn" onclick="killProcess(${proc.pid})">Kill</button></td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                document.getElementById('processes-info').innerHTML = html;
+            }
+            
+            // Load KV bucket info first
+            const kvBucketInfo = await fetchData('/api/kv-bucket-info');
+            let bucketSummary = '';
+            if (kvBucketInfo && !kvBucketInfo.error) {
+                const name = kvBucketInfo.name || 'leases';
+                const keys = kvBucketInfo.values || 0;
+                const size = kvBucketInfo.bytes ? `${Math.round(kvBucketInfo.bytes / 1024)} KB` : 'N/A';
+                const ttl = kvBucketInfo.ttl ? `${kvBucketInfo.ttl}s` : 'No TTL';
+                
+                bucketSummary = `
+                    <div style="margin-bottom: 15px; padding: 12px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #007bff;">
+                        <strong>KV Bucket "${name}":</strong> 
+                        <span style="margin-left: 10px;">${keys} keys</span>
+                        <span style="margin-left: 10px;">Size: ${size}</span>
+                        <span style="margin-left: 10px;">TTL: ${ttl}</span>
+                    </div>
+                `;
+            }
+            
+            // Load KV leases
+            const kvLeases = await fetchData('/api/kv-leases');
+            if (kvLeases.error) {
+                document.getElementById('kv-leases-info').innerHTML = bucketSummary + `<p>Error: ${kvLeases.error}</p>`;
+            } else if (kvLeases.length === 0) {
+                document.getElementById('kv-leases-info').innerHTML = bucketSummary + '<p>No KV entries found</p>';
+            } else {
+                let html = bucketSummary + `
+                    <table>
+                        <thead>
+                            <tr><th>Key</th><th>Type</th><th>Value</th></tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                kvLeases.slice(-10).reverse().forEach(entry => {
+                    let type = 'String';
+                    let valueDisplay = String(entry.value);
+                    
+                    if (typeof entry.value === 'object') {
+                        if (entry.value.worker_id && entry.value.last_seen) {
+                            type = 'Worker';
+                            const lastSeen = new Date(entry.value.last_seen);
+                            const isRecent = (new Date() - lastSeen) < 30000;
+                            const status = isRecent ? 'Active' : 'Stale';
+                            valueDisplay = `[${status}] Worker: ${entry.value.worker_id}`;
+                        } else if (entry.value.worker_id && entry.value.expires_at) {
+                            type = 'Lease';
+                            const expiresAt = new Date(entry.value.expires_at);
+                            const isActive = expiresAt > new Date();
+                            const status = isActive ? 'Active' : 'Expired';
+                            valueDisplay = `[${status}] Owner: ${entry.value.worker_id}`;
+                        } else {
+                            type = 'JSON';
+                            valueDisplay = JSON.stringify(entry.value);
+                        }
+                    }
+                    
+                    html += `
+                        <tr>
+                            <td style="font-family: monospace;">${entry.key}</td>
+                            <td><span style="background: #e9ecef; padding: 2px 6px; border-radius: 3px; font-size: 11px;">${type}</span></td>
+                            <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis;">${valueDisplay}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                document.getElementById('kv-leases-info').innerHTML = html;
+            }
+        }
+        
+        async function loadConfigurationData() {
+            const varz = await fetchData('/api/v1/varz');
+            if (varz.error) {
+                document.getElementById('system-config-details').innerHTML = `<p>Error: ${varz.error}</p>`;
+                return;
+            }
+            
+            // Update config stats
+            document.getElementById('max-connections').textContent = varz.max_connections || 'Unlimited';
+            document.getElementById('max-payload').textContent = formatBytes(varz.max_payload || 0);
+            document.getElementById('ping-interval').textContent = varz.ping_interval ? varz.ping_interval + 's' : '-';
+            document.getElementById('auth-timeout').textContent = varz.auth_timeout ? varz.auth_timeout + 's' : '-';
+            
+            document.getElementById('system-config-details').innerHTML = `
+                <table>
+                    <thead>
+                        <tr><th>Configuration</th><th>Value</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Server ID</td><td style="font-family: monospace;">${varz.server_id || 'N/A'}</td><td>Unique server identifier</td></tr>
+                        <tr><td>Server Name</td><td>${varz.server_name || 'N/A'}</td><td>Human-readable server name</td></tr>
+                        <tr><td>Host</td><td>${varz.host || 'N/A'}:${varz.port || 'N/A'}</td><td>Server listening address</td></tr>
+                        <tr><td>HTTP Port</td><td>${varz.http_port || 'N/A'}</td><td>HTTP monitoring port</td></tr>
+                        <tr><td>Max Control Line</td><td>${formatBytes(varz.max_control_line || 0)}</td><td>Maximum control line size</td></tr>
+                        <tr><td>Max Pending</td><td>${formatBytes(varz.max_pending || 0)}</td><td>Maximum pending bytes per client</td></tr>
+                        <tr><td>Write Deadline</td><td>${varz.write_deadline || 'N/A'}</td><td>Write timeout deadline</td></tr>
+                    </tbody>
+                </table>
+            `;
+        }
+        
+        // Section loading dispatcher
+        function loadSectionData(sectionName) {
+            switch(sectionName) {
+                case 'overview':
+                    loadOverviewData();
+                    break;
+                case 'performance':
+                    loadPerformanceData();
+                    break;
+                case 'jetstream':
+                    loadJetStreamData();
+                    break;
+                case 'connections':
+                    loadConnectionsData();
+                    break;
+                case 'subscriptions':
+                    loadSubscriptionsData();
+                    break;
+                case 'cluster':
+                    loadClusterData();
+                    break;
+                case 'processes':
+                    loadProcessesData();
+                    break;
+                case 'configuration':
+                    loadConfigurationData();
+                    break;
+            }
+        }
+        
+        // Action functions
+        async function deleteStream(streamName) {
+            if (!confirm(`Delete stream ${streamName}?`)) return;
+            
+            try {
+                const response = await fetch('/api/delete-stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stream_name: streamName })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(result.message);
+                    loadJetStreamData();
+                } else {
+                    throw new Error('Delete failed');
+                }
+            } catch (error) {
+                alert(`Failed to delete stream: ${error.message}`);
+            }
+        }
+        
+        async function killProcess(pid) {
+            if (!confirm(`Kill process ${pid}?`)) return;
+            
+            try {
+                const response = await fetch('/api/kill', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pid: pid })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(result.message);
+                    loadProcessesData();
+                } else {
+                    throw new Error('Kill failed');
+                }
+            } catch (error) {
+                alert(`Failed to kill process: ${error.message}`);
+            }
+        }
+        
+        // Live monitoring functions
+        let messageMonitoringEnabled = false;
+        let streamMessageMonitoringEnabled = false;
+        let lastStreamSeq = 0;
+        let messageFilter = '';
+        
+        function toggleMessageMonitoring() {
+            messageMonitoringEnabled = document.getElementById('monitor-messages').checked;
+            const messageMonitor = document.getElementById('message-monitor');
+            
+            if (messageMonitoringEnabled) {
+                messageMonitor.style.display = 'block';
+                connectMessageMonitoring();
+            } else {
+                messageMonitor.style.display = 'none';
+            }
+        }
         
         function connectMessageMonitoring() {
             if (!messageMonitoringEnabled) return;
             
             try {
-                // Note: Real NATS WebSocket monitoring would require NATS WebSocket support
-                // For now, we'll periodically check for new messages via the monitoring API
                 monitorMessages();
             } catch (error) {
                 console.error('Failed to connect message monitoring:', error);
@@ -422,13 +1256,10 @@
             }
         }
         
-        let lastStreamSeq = 0;
-        
         async function monitorMessages() {
             if (!messageMonitoringEnabled) return;
             
             try {
-                // Poll JetStream for new messages by checking stream sequence numbers
                 const jsz = await fetchData('/api/v1/jsz?streams=true&consumers=true');
                 const messageList = document.getElementById('message-list');
                 
@@ -489,108 +1320,30 @@
             }
         }
         
-        // Function to disconnect a client
-        async function disconnectClient(clientId) {
-            if (!confirm(`Are you sure you want to disconnect client ${clientId}?`)) {
-                return;
-            }
+        function addMessageToDisplay(subject, data, timestamp) {
+            const messageList = document.getElementById('message-list');
+            const messageItem = document.createElement('div');
+            messageItem.className = 'message-item';
+            messageItem.innerHTML = `
+                <div class="message-header">${subject}</div>
+                <div class="message-timestamp">${new Date(timestamp).toLocaleString()}</div>
+                <div class="message-data">${data}</div>
+            `;
             
-            try {
-                const response = await fetch(`/api/v1/connz?cid=${clientId}&close=true`, {
-                    method: 'POST'
-                });
-                
-                if (response.ok) {
-                    alert(`Client ${clientId} disconnected successfully`);
-                    // Refresh the data to show updated connection list
-                    refreshData();
-                } else {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-            } catch (error) {
-                console.error('Error disconnecting client:', error);
-                alert(`Failed to disconnect client ${clientId}: ${error.message}`);
-            }
-        }
-        
-        // Function to kill a process by PID
-        async function killProcess(pid) {
-            if (!confirm(`Are you sure you want to KILL process ${pid}? This will terminate the consumer immediately.`)) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`http://localhost:8082/api/kill`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ pid: pid })
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    alert(result.message);
-                    // Refresh the data to show updated process list
-                    refreshData();
-                } else {
-                    const error = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${error}`);
-                }
-            } catch (error) {
-                console.error('Error killing process:', error);
-                alert(`Failed to kill process ${pid}: ${error.message}`);
-            }
-        }
-        
-        // Function to delete a stream
-        async function deleteStream(streamName) {
-            if (!confirm(`Are you sure you want to DELETE stream ${streamName}? This will permanently remove all messages in the stream.`)) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`http://localhost:8082/api/delete-stream`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ stream_name: streamName })
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    alert(result.message);
-                    // Refresh the data to show updated stream list
-                    refreshData();
-                } else {
-                    const error = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${error}`);
-                }
-            } catch (error) {
-                console.error('Error deleting stream:', error);
-                alert(`Failed to delete stream ${streamName}: ${error.message}`);
-            }
-        }
-        
-        // Function to toggle message monitoring
-        function toggleMessageMonitoring() {
-            messageMonitoringEnabled = document.getElementById('monitor-messages').checked;
-            const messageMonitor = document.getElementById('message-monitor');
-            
-            if (messageMonitoringEnabled) {
-                messageMonitor.style.display = 'block';
-                connectMessageMonitoring();
+            // Add to top of list
+            if (messageList.firstChild) {
+                messageList.insertBefore(messageItem, messageList.firstChild);
             } else {
-                messageMonitor.style.display = 'none';
-                if (wsConnection) {
-                    wsConnection.close();
-                    wsConnection = null;
-                }
+                messageList.appendChild(messageItem);
+            }
+            
+            // Limit to max 50 messages
+            while (messageList.children.length > 50) {
+                messageList.removeChild(messageList.lastChild);
             }
         }
         
-        // Function to toggle stream message monitoring
+        // Stream message monitoring functions
         function toggleStreamMessageMonitoring() {
             streamMessageMonitoringEnabled = document.getElementById('monitor-stream-messages').checked;
             const streamMessageMonitor = document.getElementById('stream-message-monitor');
@@ -603,34 +1356,168 @@
             }
         }
         
-        // Function to monitor actual stream messages
         async function monitorStreamMessages() {
             if (!streamMessageMonitoringEnabled) return;
             
+            // Preserve current filter value from input field
+            const currentFilter = document.getElementById('message-filter').value.trim();
+            if (currentFilter !== messageFilter) {
+                messageFilter = currentFilter;
+            }
+            
             try {
-                const response = await fetch('http://localhost:8082/api/stream-messages');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                const response = await fetchData('/api/stream-messages');
+                if (response.error) {
+                    throw new Error(response.error);
                 }
-                const messages = await response.json();
+                const messages = response;
                 
                 const messageList = document.getElementById('stream-message-list');
                 if (messages.length === 0) {
                     messageList.innerHTML = '<div class="message-item">No messages found in stream</div>';
                 } else {
+                    let filteredMessages = messages;
+                    
+                    // Apply message filter if set
+                    if (messageFilter) {
+                        console.log(`Applying filter: "${messageFilter}"`);
+                        filteredMessages = messages.filter((msg, index) => {
+                            const subject = msg.subject || '';
+                            const headers = msg.headers || {};
+                            let messageData = {};
+                            
+                            console.log(`Message ${index + 1}:`, {
+                                subject: subject,
+                                headers: headers,
+                                rawData: msg.data ? msg.data.substring(0, 200) : 'No data'
+                            });
+                            
+                            // Try to parse message data as JSON
+                            try {
+                                if (msg.data) {
+                                    // Extract JSON part from message data (skip NATS headers)
+                                    let jsonData = msg.data;
+                                    
+                                    // If data starts with "Nats-Msg-Id:", extract the JSON part after the newline
+                                    if (jsonData.startsWith('Nats-Msg-Id:')) {
+                                        const newlineIndex = jsonData.indexOf('\n');
+                                        if (newlineIndex !== -1) {
+                                            jsonData = jsonData.substring(newlineIndex + 1);
+                                        }
+                                    }
+                                    
+                                    messageData = JSON.parse(jsonData);
+                                    console.log(`Message ${index + 1} parsed JSON:`, messageData);
+                                }
+                            } catch (e) {
+                                console.log(`Message ${index + 1} JSON parse failed:`, e.message);
+                                messageData = { _rawData: msg.data };
+                            }
+                            
+                            // Search in subject (plain text)
+                            if (subject.toLowerCase().includes(messageFilter.toLowerCase())) {
+                                console.log(`Message ${index + 1} matches in subject`);
+                                return true;
+                            }
+                            
+                            // Search in headers (nested JSON)
+                            if (searchInObject(headers, messageFilter)) {
+                                console.log(`Message ${index + 1} matches in headers`);
+                                return true;
+                            }
+                            
+                            // Search in message data (nested JSON or raw text)
+                            const dataMatch = searchInObject(messageData, messageFilter);
+                            console.log(`Message ${index + 1} data search result:`, dataMatch);
+                            if (dataMatch) {
+                                console.log(`Message ${index + 1} matches in data`);
+                                return true;
+                            }
+                            
+                            return false;
+                        });
+                        console.log(`Filter result: ${filteredMessages.length} matches out of ${messages.length} total`);
+                    }
+                    
                     messageList.innerHTML = '';
-                    messages.forEach(msg => {
-                        const messageItem = document.createElement('div');
-                        messageItem.className = 'message-item';
-                        messageItem.innerHTML = `
-                            <div class="message-header">${msg.subject || 'No Subject'}</div>
-                            <div class="message-timestamp">Seq: ${msg.seq} - ${msg.time || 'Unknown time'}</div>
-                            <div class="message-data"><pre>${msg.data || 'No data'}</pre></div>
-                            ${Object.keys(msg.headers || {}).length > 0 ? 
-                                `<div class="message-headers">Headers: ${JSON.stringify(msg.headers)}</div>` : ''}
-                        `;
-                        messageList.appendChild(messageItem);
-                    });
+                    if (filteredMessages.length === 0) {
+                        let debugInfo = '';
+                        if (messages.length > 0) {
+                            const sampleMsg = messages[0];
+                            let structureInfo = '';
+                            
+                            // Show headers info
+                            if (sampleMsg.headers && Object.keys(sampleMsg.headers).length > 0) {
+                                structureInfo += `Headers: ${Object.keys(sampleMsg.headers).join(', ')}<br>`;
+                            }
+                            
+                            // Show subject
+                            if (sampleMsg.subject) {
+                                structureInfo += `Subject: ${sampleMsg.subject}<br>`;
+                            }
+                            
+                            // Show data structure
+                            try {
+                                if (sampleMsg.data) {
+                                    const parsed = JSON.parse(sampleMsg.data);
+                                    structureInfo += `JSON keys: ${Object.keys(parsed).join(', ')}<br>`;
+                                    structureInfo += `Sample JSON: ${JSON.stringify(parsed, null, 2).substring(0, 200)}...`;
+                                }
+                            } catch (e) {
+                                structureInfo += `Raw data: "${sampleMsg.data?.substring(0, 150)}..."`;
+                            }
+                            
+                            debugInfo = `<br><small style="display: block; margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 3px;">
+                                <strong>Sample message structure:</strong><br>${structureInfo}
+                            </small>`;
+                        }
+                        messageList.innerHTML = `<div class="message-item">No messages match filter "${messageFilter}" (${messages.length} total messages)${debugInfo}</div>`;
+                    } else {
+                        // Add summary header
+                        const summaryItem = document.createElement('div');
+                        summaryItem.className = 'message-item';
+                        summaryItem.style.background = '#e8f4fd';
+                        summaryItem.style.border = '1px solid #bee5eb';
+                        summaryItem.innerHTML = `<strong>Found ${filteredMessages.length} message(s) matching "${messageFilter}" (out of ${messages.length} total messages)</strong>`;
+                        messageList.appendChild(summaryItem);
+                        
+                        // Show all matching messages
+                        filteredMessages.forEach(msg => {
+                            const messageItem = document.createElement('div');
+                            messageItem.className = 'message-item';
+                            
+                            // Format data with proper JSON indentation if possible
+                            let formattedData = msg.data || 'No data';
+                            try {
+                                if (msg.data) {
+                                    // Extract JSON part from message data (skip NATS headers)
+                                    let jsonData = msg.data;
+                                    
+                                    // If data starts with "Nats-Msg-Id:", extract the JSON part after the newline
+                                    if (jsonData.startsWith('Nats-Msg-Id:')) {
+                                        const newlineIndex = jsonData.indexOf('\n');
+                                        if (newlineIndex !== -1) {
+                                            jsonData = jsonData.substring(newlineIndex + 1);
+                                        }
+                                    }
+                                    
+                                    const parsed = JSON.parse(jsonData);
+                                    formattedData = JSON.stringify(parsed, null, 2);
+                                }
+                            } catch (e) {
+                                // Keep as raw text if not valid JSON
+                            }
+                            
+                            messageItem.innerHTML = `
+                                <div class="message-header">${msg.subject || 'No Subject'}</div>
+                                <div class="message-timestamp">Seq: ${msg.seq} - ${msg.time || 'Unknown time'}</div>
+                                <div class="message-data"><pre style="white-space: pre-wrap; word-wrap: break-word;">${formattedData}</pre></div>
+                                ${Object.keys(msg.headers || {}).length > 0 ? 
+                                    `<div class="message-headers">Headers: ${JSON.stringify(msg.headers, null, 2)}</div>` : ''}
+                            `;
+                            messageList.appendChild(messageItem);
+                        });
+                    }
                 }
                 
                 // Continue monitoring
@@ -644,380 +1531,139 @@
             }
         }
         
-        // Function to refresh all data
-        async function refreshData() {
-            try {
-                // Update server info
-                const varz = await fetchData('/api/v1/varz');
-                if (varz.error) {
-                    document.getElementById('server-info').textContent = JSON.stringify(varz, null, 2);
-                } else {
-                    document.getElementById('server-info').textContent = JSON.stringify(varz, null, 2);
-                    document.getElementById('server-version').textContent = varz.version || '-';
-                    document.getElementById('connections').textContent = varz.connections || '-';
-                    document.getElementById('subscriptions').textContent = varz.subscriptions || '-';
-                }
-                
-                // Update JetStream info
-                const jsz = await fetchData('/api/v1/jsz');
-                if (jsz.error) {
-                    document.getElementById('jetstream-info').textContent = JSON.stringify(jsz, null, 2);
-                } else {
-                    document.getElementById('jetstream-info').textContent = JSON.stringify(jsz, null, 2);
-                    document.getElementById('messages').textContent = jsz.messages || '-';
-                }
-                
-                // Update clients table
-                const connz = await fetchData('/api/v1/connz');
-                if (connz.error) {
-                    document.getElementById('clients-table-body').innerHTML = `<tr><td colspan="6">${JSON.stringify(connz, null, 2)}</td></tr>`;
-                } else {
-                    const connections = connz.connections || [];
-                    const tbody = document.getElementById('clients-table-body');
-                    if (connections.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6">No active connections</td></tr>';
-                    } else {
-                        tbody.innerHTML = connections.map(conn => `
-                            <tr>
-                                <td>${conn.cid || '-'}</td>
-                                <td>${conn.name || '-'}</td>
-                                <td>${conn.lang || '-'}</td>
-                                <td>${conn.version || '-'}</td>
-                                <td>${conn.ip || '-'}</td>
-                                <td>${conn.subscriptions || '-'}</td>
-                            </tr>
-                        `).join('');
-                    }
-                }
-                
-                
-                // Update subscriptions info from NATS monitoring data
-                const subsInfo = document.getElementById('subscriptions-info');
-                if (connz.error) {
-                    subsInfo.innerHTML = `<p>Error loading subscriptions: ${connz.error}</p>`;
-                } else if (connz.connections && connz.connections.length > 0) {
-                    // Count total subscriptions from connection data
-                    let totalSubs = 0;
-                    connz.connections.forEach(conn => {
-                        if (conn.subscriptions_list && conn.subscriptions_list.length > 0) {
-                            totalSubs += conn.subscriptions_list.length;
-                        }
-                    });
-                    
-                    if (totalSubs > 0) {
-                        let subscriptionsHtml = `
-                            <p>Showing ${totalSubs} subscription(s) from ${connz.connections.length} connection(s)</p>
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Subject</th>
-                                        <th>Queue Group</th>
-                                        <th>Client ID</th>
-                                        <th>Messages In</th>
-                                        <th>Messages Out</th>
-                                    </tr>
-                                </thead>
-                                <tbody>`;
-                        
-                        connz.connections.forEach(conn => {
-                            if (conn.subscriptions_list && conn.subscriptions_list.length > 0) {
-                                conn.subscriptions_list.forEach(sub => {
-                                    subscriptionsHtml += `
-                                        <tr>
-                                            <td>${sub.subject || 'N/A'}</td>
-                                            <td>${sub.qgroup || 'N/A'}</td>
-                                            <td>${conn.cid || 'N/A'}</td>
-                                            <td>${conn.in_msgs || 0}</td>
-                                            <td>${conn.out_msgs || 0}</td>
-                                        </tr>`;
-                                });
-                            }
-                        });
-                        
-                        subscriptionsHtml += `</tbody></table>`;
-                        subsInfo.innerHTML = subscriptionsHtml;
-                    } else {
-                        subsInfo.innerHTML = `<p>No detailed subscription information available. Total subscriptions: ${varz.subscriptions || 0}</p>`;
-                    }
-                } else {
-                    subsInfo.innerHTML = '<p>No active connections found.</p>';
-                }                // Show stream information from jsz with detailed stream data
-                const jszDetailData = await fetchData('/api/v1/jsz?streams=true');
-                if (jszDetailData.error) {
-                    document.getElementById('stream-info').innerHTML = `<pre>Error: ${JSON.stringify(jszDetailData, null, 2)}</pre>`;
-                } else if (jszDetailData.account_details && jszDetailData.account_details.length > 0) {
-                    const account = jszDetailData.account_details[0];
-                    if (account.stream_detail && account.stream_detail.length > 0) {
-                        let streamHtml = `
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Stream Name</th>
-                                        <th>Messages</th>
-                                        <th>Size</th>
-                                        <th>Consumers</th>
-                                        <th>Subjects</th>
-                                        <th>Last Sequence</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>`;
-                        
-                        account.stream_detail.forEach(stream => {
-                            streamHtml += `
-                                <tr>
-                                    <td>${stream.name || 'N/A'}</td>
-                                    <td>${stream.state?.messages || 0}</td>
-                                    <td>${formatBytes(stream.state?.bytes || 0)}</td>
-                                    <td>${stream.state?.consumer_count || 0}</td>
-                                    <td>${stream.config?.subjects ? stream.config.subjects.join(', ') : 'N/A'}</td>
-                                    <td>${stream.state?.last_seq || 0}</td>
-                                    <td><button class="disconnect-btn" onclick="deleteStream('${stream.name}')">Delete</button></td>
-                                </tr>`;
-                        });
-                        
-                        streamHtml += `</tbody></table>`;
-                        
-                        document.getElementById('stream-info').innerHTML = streamHtml;
-                    } else {
-                        document.getElementById('stream-info').innerHTML = '<p>No streams found or no stream details available.</p>';
-                    }
-                } else {
-                    document.getElementById('stream-info').innerHTML = '<p>JetStream not enabled or no account details available.</p>';
-                }
-                
-                // Show consumers information from detailed JetStream data
-                const jszConsumerData = await fetchData('/api/v1/jsz?consumers=true');
-                if (jszConsumerData.error) {
-                    document.getElementById('consumers-info').innerHTML = `<pre>Error: ${JSON.stringify(jszConsumerData, null, 2)}</pre>`;
-                } else if (jszConsumerData.account_details && jszConsumerData.account_details.length > 0) {
-                    const account = jszConsumerData.account_details[0];
-                    let consumersHtml = `
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Consumer Name</th>
-                                    <th>Stream</th>
-                                    <th>Delivered</th>
-                                    <th>Ack Floor</th>
-                                    <th>Pending</th>
-                                    <th>Status</th>
-                                    <th>Last Active</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
-                    
-                    let hasConsumers = false;
-                    if (account.stream_detail) {
-                        account.stream_detail.forEach(stream => {
-                            if (stream.consumer_detail && stream.consumer_detail.length > 0) {
-                                stream.consumer_detail.forEach(consumer => {
-                                    hasConsumers = true;
-                                    const status = getConsumerStatus(consumer);
-                                    consumersHtml += `
-                                        <tr>
-                                            <td>${consumer.name || 'N/A'}</td>
-                                            <td>${stream.name || 'N/A'}</td>
-                                            <td>${consumer.delivered?.stream_seq || 0}</td>
-                                            <td>${consumer.ack_floor?.stream_seq || 0}</td>
-                                            <td>${consumer.num_pending || 0}</td>
-                                            <td><span class="${status.class}">${status.status}</span></td>
-                                            <td>${formatDate(consumer.ts)}</td>
-                                        </tr>`;
-                                });
-                            }
-                        });
-                    }
-                    
-                    if (!hasConsumers) {
-                        consumersHtml += '<tr><td colspan="7">No consumers found</td></tr>';
-                    }
-                    
-                    consumersHtml += '</tbody></table>';
-                    document.getElementById('consumers-info').innerHTML = consumersHtml;
-                } else {
-                    document.getElementById('consumers-info').innerHTML = '<p>No consumer information available.</p>';
-                }
-                
-                // Show KV leases information - look for KV buckets from detailed stream data
-                if (jszDetailData.account_details && jszDetailData.account_details.length > 0) {
-                    const account = jszDetailData.account_details[0];
-                    let kvHtml = `
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>KV Bucket</th>
-                                    <th>Stream</th>
-                                    <th>Keys (Messages)</th>
-                                    <th>Size</th>
-                                    <th>Last Update</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
-                    
-                    let hasKvBuckets = false;
-                    if (account.stream_detail) {
-                        account.stream_detail.forEach(stream => {
-                            // KV buckets typically start with 'KV_' prefix
-                            if (stream.name && stream.name.startsWith('KV_')) {
-                                hasKvBuckets = true;
-                                const bucketName = stream.name.substring(3); // Remove 'KV_' prefix
-                                kvHtml += `
-                                    <tr>
-                                        <td>${bucketName}</td>
-                                        <td>${stream.name}</td>
-                                        <td>${stream.state?.messages || 0}</td>
-                                        <td>${formatBytes(stream.state?.bytes || 0)}</td>
-                                        <td>${formatDate(stream.state?.last_ts) || 'Never'}</td>
-                                        <td><span class="consumer-status-active">Active</span></td>
-                                    </tr>`;
-                            }
-                        });
-                    }
-                    
-                    if (!hasKvBuckets) {
-                        kvHtml += '<tr><td colspan="6">No KV buckets found</td></tr>';
-                    }
-                    
-                    kvHtml += '</tbody></table>';
-                    document.getElementById('kv-leases-info').innerHTML = kvHtml;
-                } else {
-                    document.getElementById('kv-leases-info').innerHTML = '<p>No KV bucket information available.</p>';
-                }
-                
-                // Update processes table
-                try {
-                    const processes = await fetchData('/api/processes');
-                    if (processes.error) {
-                        document.getElementById('processes-table-body').innerHTML = `<tr><td colspan="4">Error: ${processes.error}</td></tr>`;
-                    } else {
-                        const tbody = document.getElementById('processes-table-body');
-                        if (processes.length === 0) {
-                            tbody.innerHTML = '<tr><td colspan="4">No consumer processes running</td></tr>';
-                        } else {
-                            tbody.innerHTML = processes.map(proc => `
-                                <tr>
-                                    <td>${proc.pid}</td>
-                                    <td>${proc.name}</td>
-                                    <td style="font-family: monospace; font-size: 11px; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${proc.command || 'N/A'}</td>
-                                    <td>
-                                        <button class="disconnect-btn" onclick="killProcess(${proc.pid})">
-                                            Kill PID
-                                        </button>
-                                    </td>
-                                </tr>
-                            `).join('');
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error loading processes:', error);
-                    document.getElementById('processes-table-body').innerHTML = `<tr><td colspan="4">Failed to load processes</td></tr>`;
-                }
-                
-                // Load detailed KV lease contents
-                try {
-                    const kvDetails = await fetchData('/api/kv-leases');
-                    if (kvDetails.error) {
-                        document.getElementById('kv-lease-details').innerHTML = `<p>Error loading KV details: ${kvDetails.error}</p>`;
-                    } else {
-                        // Display KV entries in a clean table
-                        let detailsHtml = `
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Key</th>
-                                        <th>Type</th>
-                                        <th>Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody>`;
-                        
-                        if (kvDetails.length === 0) {
-                            detailsHtml += '<tr><td colspan="3">No KV entries found</td></tr>';
-                        } else {
-                            // Take the most recent entries (last 10) and display them in reverse order (newest first)
-                            let recentEntries = kvDetails;
-                            if (kvDetails.length > 10) {
-                                recentEntries = kvDetails.slice(-10); // Get the last 10 entries
-                            }
-                            
-                            // Reverse the order to show newest first
-                            const sortedDetails = recentEntries.reverse();
-                            
-                            sortedDetails.forEach(entry => {
-                                let valueDisplay = '';
-                                let type = 'String';
-                                
-                                if (typeof entry.value === 'object') {
-                                    type = 'JSON';
-                                    if (entry.value.worker_id && entry.value.last_seen) {
-                                        // Worker registration
-                                        const lastSeen = new Date(entry.value.last_seen);
-                                        const isRecent = (new Date() - lastSeen) < 30000; // Less than 30 seconds
-                                        const status = isRecent ? '🟢 Active' : '🟡 Stale';
-                                        valueDisplay = `
-                                            <div style="font-size: 12px;">
-                                                <div><strong>Worker:</strong> ${entry.value.worker_id}</div>
-                                                <div><strong>Status:</strong> ${status}</div>
-                                                <div><strong>Last Seen:</strong> ${lastSeen.toLocaleString()}</div>
-                                                ${entry.value.partitions ? `<div><strong>Partitions:</strong> [${entry.value.partitions.join(', ')}]</div>` : ''}
-                                            </div>
-                                        `;
-                                        type = 'Worker';
-                                    } else if (entry.value.worker_id && entry.value.expires_at) {
-                                        // Lease entry
-                                        const expiresAt = new Date(entry.value.expires_at);
-                                        const isActive = expiresAt > new Date();
-                                        const status = isActive ? '🟢 Active' : '🔴 Expired';
-                                        const timeLeft = isActive ? Math.ceil((expiresAt - new Date()) / 1000) : 0;
-                                        valueDisplay = `
-                                            <div style="font-size: 12px;">
-                                                <div><strong>Owner:</strong> ${entry.value.worker_id}</div>
-                                                <div><strong>Status:</strong> ${status}</div>
-                                                <div><strong>Expires:</strong> ${expiresAt.toLocaleString()}</div>
-                                                ${isActive ? `<div><strong>Time Left:</strong> ${timeLeft}s</div>` : ''}
-                                            </div>
-                                        `;
-                                        type = 'Lease';
-                                    } else {
-                                        valueDisplay = `<pre style="margin: 0; font-size: 11px; max-height: 100px; overflow-y: auto;">${JSON.stringify(entry.value, null, 2)}</pre>`;
-                                        type = 'JSON';
-                                    }
-                                } else {
-                                    valueDisplay = String(entry.value);
-                                }
-                                
-                                detailsHtml += `
-                                    <tr>
-                                        <td style="font-family: monospace; font-weight: bold;">${entry.key}</td>
-                                        <td><span style="background: #e9ecef; padding: 2px 6px; border-radius: 3px; font-size: 11px;">${type}</span></td>
-                                        <td style="max-width: 400px;">${valueDisplay}</td>
-                                    </tr>`;
-                            });
-                        }
-                        
-                        detailsHtml += '</tbody></table>';
-                        document.getElementById('kv-lease-details').innerHTML = detailsHtml;
-                    }
-                } catch (error) {
-                    console.error('Error loading KV details:', error);
-                    document.getElementById('kv-lease-details').innerHTML = `<p>Failed to load KV details: ${error.message}</p>`;
-                }
-            } catch (error) {
-                console.error('Error refreshing data:', error);
+        // Message filter functions
+        function applyMessageFilter() {
+            messageFilter = document.getElementById('message-filter').value.trim();
+            updateFilterStatus();
+            if (streamMessageMonitoringEnabled) {
+                monitorStreamMessages(); // Refresh immediately with new filter
             }
         }
         
-        // Initial data load
-        refreshData();
-        
-        // Auto-refresh based on checkbox
-        setInterval(() => {
-            if (document.getElementById('auto-refresh') && document.getElementById('auto-refresh').checked) {
-                refreshData();
+        function clearMessageFilter() {
+            messageFilter = '';
+            document.getElementById('message-filter').value = '';
+            updateFilterStatus();
+            if (streamMessageMonitoringEnabled) {
+                monitorStreamMessages(); // Refresh immediately without filter
             }
-        }, 5000);
+        }
+        
+        function updateFilterStatus() {
+            const statusElement = document.getElementById('filter-status');
+            if (messageFilter) {
+                statusElement.innerHTML = `<span style="color: #007bff; font-weight: bold;">Active filter: "${messageFilter}" (preserved during auto-refresh)</span>`;
+            } else {
+                statusElement.innerHTML = '<span style="color: #6c757d;">No filter active - showing all messages</span>';
+            }
+        }
+        
+        // Advanced JSON search function
+        function searchInObject(obj, searchTerm) {
+            if (!obj || !searchTerm) return false;
+            
+            // Try to parse as JSON first for exact key-value matching
+            try {
+                const parsedFilter = JSON.parse(searchTerm);
+                if (typeof parsedFilter === 'object' && !Array.isArray(parsedFilter)) {
+                    // It's a JSON object, do exact key-value matching
+                    return Object.entries(parsedFilter).every(([key, value]) => {
+                        return searchExactKeyValue(obj, key, value);
+                    });
+                }
+            } catch (e) {
+                // Not JSON, fall through to text search
+            }
+            
+            // Otherwise, do a general text search
+            return searchNestedText(obj, searchTerm);
+        }
+        
+        function searchExactKeyValue(obj, targetKey, targetValue) {
+            if (!obj || typeof obj !== 'object') return false;
+            
+            // Handle arrays
+            if (Array.isArray(obj)) {
+                return obj.some(item => searchExactKeyValue(item, targetKey, targetValue));
+            }
+            
+            // Check if current object has the key
+            if (targetKey in obj) {
+                // Check if value matches (string comparison)
+                return String(obj[targetKey]) === String(targetValue);
+            }
+            
+            // Recursively search nested objects
+            return Object.values(obj).some(value => {
+                if (typeof value === 'object') {
+                    return searchExactKeyValue(value, targetKey, targetValue);
+                }
+                return false;
+            });
+        }
+        
+        function searchNestedText(obj, searchTerm) {
+            if (!obj) return false;
+            
+            const term = searchTerm.toLowerCase();
+            
+            if (typeof obj === 'string') {
+                return obj.toLowerCase().includes(term);
+            }
+            
+            if (typeof obj === 'number' || typeof obj === 'boolean') {
+                return String(obj).toLowerCase().includes(term);
+            }
+            
+            if (Array.isArray(obj)) {
+                return obj.some(item => searchNestedText(item, searchTerm));
+            }
+            
+            if (typeof obj === 'object') {
+                return Object.entries(obj).some(([key, value]) => {
+                    return key.toLowerCase().includes(term) || searchNestedText(value, searchTerm);
+                });
+            }
+            
+            return false;
+        }
+        
+        // Main refresh function
+        function refreshCurrentSection() {
+            loadSectionData(currentSection);
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const sectionName = this.getAttribute('data-section');
+                    showSection(sectionName);
+                });
+            });
+            
+            // Setup auto-refresh
+            document.getElementById('auto-refresh').addEventListener('change', function() {
+                isAutoRefresh = this.checked;
+                
+                if (refreshTimer) {
+                    clearInterval(refreshTimer);
+                }
+                
+                if (isAutoRefresh) {
+                    refreshTimer = setInterval(refreshCurrentSection, 5000);
+                }
+            });
+            
+            // Initial load
+            loadOverviewData();
+            
+            // Start auto-refresh
+            refreshTimer = setInterval(refreshCurrentSection, 5000);
+        });
+        
     </script>
 </body>
 </html>

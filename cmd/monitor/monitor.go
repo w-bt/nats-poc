@@ -43,6 +43,7 @@ func main() {
 	r.HandleFunc("/api/processes", getProcesses).Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/kill", killProcess).Methods("POST", "OPTIONS")
 	r.HandleFunc("/api/kv-leases", getKVLeases).Methods("GET", "OPTIONS")
+	r.HandleFunc("/api/kv-bucket-info", getKVBucketInfo).Methods("GET", "OPTIONS")
 	r.HandleFunc("/api/delete-stream", deleteStream).Methods("POST", "OPTIONS")
 	r.HandleFunc("/api/stream-messages", getStreamMessages).Methods("GET", "OPTIONS")
 
@@ -126,8 +127,8 @@ func getKVLeases(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 
-	// Use NATS CLI to get KV bucket keys
-	cmd := exec.Command("nats", "kv", "ls", "leases")
+	// Use NATS CLI via docker to get KV bucket keys
+	cmd := exec.Command("docker", "exec", "nats-poc-nats-box-1", "nats", "kv", "ls", "leases", "--server", "nats:4222")
 	output, err := cmd.Output()
 	if err != nil {
 		http.Error(w, "Failed to get KV leases: "+err.Error(), http.StatusInternalServerError)
@@ -150,7 +151,7 @@ func getKVLeases(w http.ResponseWriter, r *http.Request) {
 			key := parts[0]
 
 			// Get the value for this key
-			valueCmd := exec.Command("nats", "kv", "get", "leases", key)
+			valueCmd := exec.Command("docker", "exec", "nats-poc-nats-box-1", "nats", "kv", "get", "leases", key, "--server", "nats:4222")
 			valueOutput, valueErr := valueCmd.Output()
 
 			var value interface{}
@@ -173,6 +174,31 @@ func getKVLeases(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(kvEntries)
+}
+
+func getKVBucketInfo(w http.ResponseWriter, r *http.Request) {
+	// Set CORS headers explicitly
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+
+	// Get KV bucket info using NATS CLI
+	cmd := exec.Command("docker", "exec", "nats-poc-nats-box-1", "nats", "kv", "info", "leases", "--json", "--server", "nats:4222")
+	output, err := cmd.Output()
+	if err != nil {
+		http.Error(w, "Failed to get KV bucket info: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Parse the JSON output
+	var bucketInfo map[string]interface{}
+	if err := json.Unmarshal(output, &bucketInfo); err != nil {
+		http.Error(w, "Failed to parse KV bucket info: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(bucketInfo)
 }
 
 func handleOptions(w http.ResponseWriter, r *http.Request) {
@@ -201,7 +227,7 @@ func deleteStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete the stream using NATS CLI
-	cmd := exec.Command("nats", "stream", "rm", req.StreamName, "--force")
+	cmd := exec.Command("docker", "exec", "nats-poc-nats-box-1", "nats", "stream", "rm", req.StreamName, "--force", "--server", "nats:4222")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		http.Error(w, "Failed to delete stream: "+err.Error()+"\nOutput: "+string(output), http.StatusInternalServerError)
@@ -226,7 +252,7 @@ func getStreamMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the last sequence number
-	cmd := exec.Command("nats", "stream", "info", streamName, "--json", "--server", "localhost:4222")
+	cmd := exec.Command("docker", "exec", "nats-poc-nats-box-1", "nats", "stream", "info", streamName, "--json", "--server", "nats:4222")
 	output, err := cmd.Output()
 	if err != nil {
 		http.Error(w, "Failed to get stream info: "+err.Error(), http.StatusInternalServerError)
@@ -260,7 +286,7 @@ func getStreamMessages(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Get message by sequence number
-		cmd := exec.Command("nats", "stream", "get", streamName, fmt.Sprintf("%d", seq), "--server", "localhost:4222")
+		cmd := exec.Command("docker", "exec", "nats-poc-nats-box-1", "nats", "stream", "get", streamName, fmt.Sprintf("%d", seq), "--server", "nats:4222")
 		output, err := cmd.Output()
 		if err != nil {
 			// Skip if message doesn't exist
